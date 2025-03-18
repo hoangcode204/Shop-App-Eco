@@ -1,12 +1,16 @@
 package com.example.ShopAppEcomere.exception;
 
 import com.example.ShopAppEcomere.dto.response.ApiResponse;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.validation.ConstraintViolation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
 import java.nio.file.AccessDeniedException;
 import java.util.*;
 
@@ -62,6 +66,26 @@ public class GlobalExceptionHandler {
         apiResponse.setMessage("Validation failed");
         apiResponse.setResult(errors);
 
+        return ResponseEntity.badRequest().body(apiResponse);
+    }
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<ApiResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+        String errorMessage = "Invalid request payload";
+
+        if (ex.getCause() instanceof InvalidFormatException invalidFormatException) {
+            Class<?> targetType = invalidFormatException.getTargetType();
+            if (targetType.isEnum()) {
+                errorMessage = String.format("Invalid value '%s' for field '%s'. Accepted values: %s",
+                        invalidFormatException.getValue(),
+                        invalidFormatException.getPath().get(0).getFieldName(),
+                        Arrays.toString(targetType.getEnumConstants()));
+            }
+        }
+
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setCode(HttpStatus.BAD_REQUEST.value());
+        apiResponse.setMessage(errorMessage);
         return ResponseEntity.badRequest().body(apiResponse);
     }
 

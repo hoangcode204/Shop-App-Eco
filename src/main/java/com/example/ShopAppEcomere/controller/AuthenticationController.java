@@ -11,6 +11,7 @@ import com.nimbusds.jose.JOSEException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.text.ParseException;
@@ -19,10 +20,12 @@ import java.text.ParseException;
 @RequestMapping("api/v1/auth")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class AuthenticationController {
     AuthenticationService authenticationService;
     @PostMapping("/outbound/authentication")
     ApiResponse<AuthenticationResponse> outboundAuthenticate(@RequestParam("code") String code) {
+        log.info("Huy hoang dep trai");
         var result = authenticationService.outboundAuthenticate(code);
         return ApiResponse.<AuthenticationResponse>builder().result(result).build();
     }

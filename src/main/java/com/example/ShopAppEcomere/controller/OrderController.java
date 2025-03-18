@@ -10,6 +10,7 @@ import com.example.ShopAppEcomere.service.OrderService;
 import com.example.ShopAppEcomere.validator.ApiMessage;
 import com.turkraft.springfilter.boot.Filter;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -32,7 +33,7 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     @ApiMessage("Fetch order by id")
-    public ApiResponse<OrderDetailResponse> getOrderById(@PathVariable("orderId") Long orderId) {
+    public ApiResponse<OrderDetailResponse> getOrderById(@PathVariable @Min(value = 1,message = "orderId phai lớn hơn 0!") Long orderId) {
         return ApiResponse.<OrderDetailResponse>builder()
                 .result(orderService.getOrderById(orderId))
                 .build();
@@ -48,7 +49,7 @@ public class OrderController {
     }
     @GetMapping("/users/{userId}")
     @ApiMessage("Fetch all orders by user")
-    public ApiResponse<ResultPaginationDTO> getAllOrdersByUser(@PathVariable("userId") Long userId,
+    public ApiResponse<ResultPaginationDTO> getAllOrdersByUser(@PathVariable("userId") @Min(value = 1,message = "userId phai lớn hơn 0!") Long userId,
             Pageable pageable) {
         return ApiResponse.<ResultPaginationDTO>builder()
                 .result(orderService.fetchAllOrdersByUser(userId,pageable))
@@ -57,7 +58,7 @@ public class OrderController {
     @PutMapping("/{orderId}")
     @ApiMessage("Update order")
     public ApiResponse<OrderBasicResponse> updateOrder(
-            @PathVariable Long orderId,
+            @PathVariable  @Min(value = 1,message = "orderId phai lớn hơn 0!") Long orderId,
             @RequestBody OrderRequest request) {
         return ApiResponse.<OrderBasicResponse>builder()
                 .result(orderService.updateOrder(request, orderId))
@@ -66,7 +67,7 @@ public class OrderController {
 
     @DeleteMapping("/{orderId}")
     @ApiMessage("Delete order")
-    public ApiResponse<Void> deleteOrder(@PathVariable("orderId") Long orderId) {
+    public ApiResponse<Void> deleteOrder(@PathVariable("orderId") @Min(value = 1,message = "orderId phai lớn hơn 0!") Long orderId) {
         orderService.deleteOrder(orderId);
         return ApiResponse.<Void>builder()
                 .message("Delete order successful")

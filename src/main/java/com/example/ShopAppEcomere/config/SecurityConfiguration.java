@@ -16,31 +16,28 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.Map;
 
-
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfiguration {
     private final Map<HttpMethod, String[]> PUBLIC_ENDPOINTS = Map.of(
-        HttpMethod.POST, new String[]{
-                "api/v1/users/register",
-
-                "api/v1/auth/token",
-                "api/v1/auth/introspect",
-                "api/v1/auth/logout",
+            HttpMethod.POST, new String[]{
+                    "api/v1/users/register",
+                    "api/v1/auth/token",
+                    "api/v1/auth/introspect",
+                    "api/v1/auth/logout",
                     "api/v1/auth/refresh",
                     "api/v1/auth/outbound/authentication",
-        },
-        HttpMethod.GET, new String[]{
-                "api/v1/products/**",
-                "api/v1/categories/**",
+            },
+            HttpMethod.GET, new String[]{
+                    "api/v1/products/**",
+                    "api/v1/categories/**",
                     "api/v1/users/myInfo"
             }
     );
+
     private final Map<HttpMethod, String[]> ADMIN_ENDPOINTS = Map.of(
             HttpMethod.GET, new String[]{
-//                    "api/v1/users/**",
                     "api/v1/shipments/**",
                     "api/v1/orderitems/**",
                     "api/v1/orders/**",
@@ -69,6 +66,7 @@ public class SecurityConfiguration {
                     "api/v1/roles"
             }
     );
+
     private final Map<HttpMethod, String[]> USER_ENDPOINTS = Map.of(
             HttpMethod.GET, new String[]{
                     "api/v1/users/{userId}",
@@ -78,7 +76,6 @@ public class SecurityConfiguration {
                     "api/v1/orders/{orderId}",
                     "api/v1/carts/{cartId}",
                     "api/v1/orders/users/{userId}"
-
             },
             HttpMethod.DELETE, new String[]{
                     "api/v1/users/{userId}",
@@ -109,59 +106,68 @@ public class SecurityConfiguration {
 
     @Autowired
     private CustomJwtDecoder customJwtDecoder;
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {//định nghĩa luồng bảo mật cho ứng dụng
+    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> {
-            // 1. Public Endpoints: Cho phép không cần xác thực
+            // 🔓 1. Cho phép truy cập Swagger UI mà không cần xác thực
+            request.requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/v3/api-docs",
+                    "/webjars/**"
+            ).permitAll();
+
+            // 🔓 2. Public Endpoints: Không yêu cầu xác thực
             PUBLIC_ENDPOINTS.forEach((method, endpoints) -> {
                 for (String endpoint : endpoints) {
                     request.requestMatchers(method, endpoint).permitAll();
                 }
             });
-            // 3. User Endpoints: Chỉ cho phép user truy cập
+
+            // 🔐 3. User Endpoints: Chỉ USER được truy cập
             USER_ENDPOINTS.forEach((method, endpoints) -> {
                 for (String endpoint : endpoints) {
                     request.requestMatchers(method, endpoint).hasRole("USER");
                 }
             });
-            // 2. Admin Endpoints: Chỉ cho phép admin truy cập
+
+            // 🔐 4. Admin Endpoints: Chỉ ADMIN được truy cập
             ADMIN_ENDPOINTS.forEach((method, endpoints) -> {
                 for (String endpoint : endpoints) {
                     request.requestMatchers(method, endpoint).hasRole("ADMIN");
                 }
             });
 
-
-            // 3. Các request khác phải xác thực
+            // 🔐 5. Các request khác phải xác thực
             request.anyRequest().authenticated();
         });
 
         httpSecurity.oauth2ResourceServer(oauth2 ->
                 oauth2.jwt(jwtConfigurer ->
-                                jwtConfigurer.decoder(customJwtDecoder)//sử dụng customJwtDecoder để giải mã JWT (JSON Web Token).
-                                        .jwtAuthenticationConverter(jwtAuthenticationConverter()))//Chuyển đổi token JWT thành thông tin xác thực của người dùng.
-                        .authenticationEntryPoint(new JwtAuthenticationEntryPoint())//Xử lý lỗi khi người dùng không có quyền truy cập hoặc token không hợp lệ
-
+                                jwtConfigurer.decoder(customJwtDecoder)
+                                        .jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                        .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
         );
 
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
 
         return httpSecurity.build();
     }
+
     @Bean
-    JwtAuthenticationConverter jwtAuthenticationConverter(){
+    JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
         jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
-//        jwtAuthenticationConverter.setPrincipalClaimName("userId"); // Thêm dòng này để ánh xạ userId
         return jwtAuthenticationConverter;
     }
 
     @Bean
-    PasswordEncoder passwordEncoder(){
+    PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(10);
     }
-
 }

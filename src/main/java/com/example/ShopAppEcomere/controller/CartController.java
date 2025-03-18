@@ -6,6 +6,7 @@ import com.example.ShopAppEcomere.dto.response.cart.CartBasicResponse;
 import com.example.ShopAppEcomere.dto.response.cart.CartDetailResponse;
 import com.example.ShopAppEcomere.service.CartService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,21 +27,21 @@ public class CartController {
     }
 
     @PutMapping("/{cartId}")
-    public ApiResponse<CartBasicResponse> updateCart(@PathVariable Long cartId, @RequestBody CartRequest request) {
+    public ApiResponse<CartBasicResponse> updateCart(@PathVariable @Min(1) Long cartId, @Valid @RequestBody CartRequest request) {
         return ApiResponse.<CartBasicResponse>builder()
                 .result(cartService.updateCart(cartId, request))
                 .build();
     }
 
     @GetMapping("/{cartId}")
-    public ApiResponse<CartDetailResponse> getCartById(@PathVariable Long cartId) {
+    public ApiResponse<CartDetailResponse> getCartById(@PathVariable  @Min(1) Long cartId) {
         return ApiResponse.<CartDetailResponse>builder()
                 .result(cartService.getCartById(cartId))
                 .build();
     }
 
     @DeleteMapping("/{cartId}")
-    public ApiResponse<Void> deleteCart(@PathVariable Long cartId) {
+    public ApiResponse<Void> deleteCart(@PathVariable @Min(1) Long cartId) {
         cartService.deleteCart(cartId);
         return ApiResponse.<Void>builder()
                 .message("Cart deleted successfully")
@@ -48,7 +49,7 @@ public class CartController {
     }
 
     @GetMapping("/user/{userId}")
-    public ApiResponse<List<CartDetailResponse>> getAllCartsByUser(@PathVariable Long userId) {
+    public ApiResponse<List<CartDetailResponse>> getAllCartsByUser(@PathVariable @Min(1) Long userId) {
         return ApiResponse.<List<CartDetailResponse>>builder()
                 .result(cartService.getAllCartsByUser(userId))
                 .build();
