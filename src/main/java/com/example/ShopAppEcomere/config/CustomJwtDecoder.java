@@ -18,7 +18,6 @@ import java.util.Objects;
 
 @Component
 public class CustomJwtDecoder implements JwtDecoder {
-    //Tách các thông tin trong token (như claims, expiration time, authorities, v.v.) thông qua NimbusJwtDecoder.
     @Value("${jwt.signerKey}")
     private String signerKey;
 
@@ -31,7 +30,7 @@ public class CustomJwtDecoder implements JwtDecoder {
     public Jwt decode(String token) throws JwtException {
 
         try {
-            var response = authenticationService.introspect(IntrospectRequest.builder()//kiểm tra token hợp lệ hay không
+            var response = authenticationService.introspect(IntrospectRequest.builder()
                     .token(token)
                     .build());
 
@@ -42,13 +41,13 @@ public class CustomJwtDecoder implements JwtDecoder {
         }
 
         if (Objects.isNull(nimbusJwtDecoder)) {
-            SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");//dùng thuật toán HMAC-SHA512 (HS512).
+            SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");
             nimbusJwtDecoder = NimbusJwtDecoder
                     .withSecretKey(secretKeySpec)
                     .macAlgorithm(MacAlgorithm.HS512)
                     .build();
         }
 
-        return nimbusJwtDecoder.decode(token);//giải mã token & xác minh chữ kí số
+        return nimbusJwtDecoder.decode(token);
     }
 }

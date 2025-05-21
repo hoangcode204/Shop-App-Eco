@@ -1,11 +1,8 @@
 package com.example.ShopAppEcomere.entity;
-import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.util.List;
 
@@ -19,20 +16,32 @@ import java.util.List;
 public class Product extends Base {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private String name;
-    private Float price;
-    private String thumbnail;
-    private String description;
-    private Integer stock;
+    private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY) // Giữ EAGER vì Category thường xuyên được dùng.
+    private String name_product;
+    private String description;
+    private Float price;
+    private String img;
+    private Integer quantity;
+
+    // Quan hệ với Category
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    @JsonBackReference
+    @JsonIgnore // Tránh vòng lặp khi serialize JSON
     private Category category;
 
+    // Quan hệ với OrderItem
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference
+    @JsonIgnore // Tránh vòng lặp khi serialize JSON
     private List<OrderItem> orderItems;
 
+    // Quan hệ với Gallery
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Gallery> galleries;
+
+    // Quan hệ với Review
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Review> reviews;
 }

@@ -11,6 +11,8 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PasswordCreationRequest {
     @Size(min = 6, message = "INVALID_PASSWORD")
-    String password;
+    String oldPassword;
+    @Size(min = 6, message = "INVALID_PASSWORD")
+    String newPassword;
 }
 

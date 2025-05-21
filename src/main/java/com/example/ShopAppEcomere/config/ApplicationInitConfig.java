@@ -14,34 +14,44 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.HashSet;
+
 import java.util.Set;
 
 @Configuration
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Builder
+
 public class ApplicationInitConfig {
 
     PasswordEncoder passwordEncoder;
     RoleRepository roleRepository;
 
     @Bean
-    ApplicationRunner applicationRunner(UserRepository userRepository){
+    ApplicationRunner applicationRunner(UserRepository userRepository) {
         return args -> {
-            if (userRepository.findByPhoneNumber("0123456789").isEmpty()){
-                Role adminRole = roleRepository.findByName("ADMIN");
+            // 🔹 Tìm Role ADMIN trong database
+            Role adminRole = roleRepository.findByName("ADMIN");
+
+            // 🔹 Nếu chưa có thì tạo mới
+            if (adminRole == null) {
+                adminRole = Role.builder().name("ADMIN").build();
+                roleRepository.save(adminRole);
+                log.info("Đã tạo mới Role 'ADMIN' trong database.");
+            }
+
+            // 🔹 Kiểm tra nếu User admin chưa tồn tại thì tạo mới
+            if (userRepository.findByEmail("admin@gmail.com").isEmpty()) {
                 User user = User.builder()
-                        .phoneNumber("0123456789")
-                        .password(passwordEncoder.encode("admin"))
-                         .roles(Set.of(adminRole))
+                        .email("admin@gmail.com")
+                        .password(passwordEncoder.encode("admin")) // ✅ Mật khẩu đã được mã hóa
+                        .roles(Set.of(adminRole)) // ✅ Đã chắc chắn có Role ADMIN
                         .build();
 
                 userRepository.save(user);
-                log.warn("Admin user with phone number {} has been created with default password: admin, please change it", user.getPhoneNumber());
-            }else {
-                log.warn("Account admin is existed");
+                log.info("Đã tạo User 'admin@gmail.com' với mật khẩu mặc định: admin");
+            } else {
+                log.warn("Tài khoản admin đã tồn tại, bỏ qua việc tạo mới.");
             }
         };
     }

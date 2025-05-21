@@ -1,31 +1,23 @@
 package com.example.ShopAppEcomere.service;
 
-import com.example.ShopAppEcomere.dto.request.OrderRequest;
-import com.example.ShopAppEcomere.dto.response.ResultPaginationDTO;
-import com.example.ShopAppEcomere.dto.response.order.OrderBasicResponse;
-import com.example.ShopAppEcomere.dto.response.order.OrderDetailResponse;
-import com.example.ShopAppEcomere.dto.response.product.ProductBasicResponse;
+import com.example.ShopAppEcomere.dto.request.OrderItem.OrderItemDTO;
+import com.example.ShopAppEcomere.dto.request.order.*;
+import com.example.ShopAppEcomere.dto.response.order.OrderResponse;
 import com.example.ShopAppEcomere.entity.*;
-import com.example.ShopAppEcomere.enums.OrderStatusEnum;
+import com.example.ShopAppEcomere.enums.StatusOrder;
 import com.example.ShopAppEcomere.exception.AppException;
 import com.example.ShopAppEcomere.exception.ErrorCode;
 import com.example.ShopAppEcomere.mapper.OrderMapper;
-import com.example.ShopAppEcomere.repository.OrderItemRepository;
-import com.example.ShopAppEcomere.repository.OrderRepository;
-import com.example.ShopAppEcomere.repository.ShipmentRepository;
-import com.example.ShopAppEcomere.repository.UserRepository;
-import com.example.ShopAppEcomere.specifications.OrderSpecifications;
+import com.example.ShopAppEcomere.repository.*;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.prepost.PostAuthorize;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.AccessDeniedException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,207 +26,164 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final UserRepository userRepository;
-    private final ShipmentRepository shipmentRepository;
-    private final OrderItemRepository orderItemRepository;
-    private List<OrderItem> fetchOrderItemsFromIds(List<Long> orderItemIds) {
-        // Kiểm tra nếu danh sách ID là null hoặc rỗng
-        if (orderItemIds == null || orderItemIds.isEmpty()) {
-            throw new AppException(ErrorCode.ORDER_ITEM_NOT_EXISTED); // Ném exception
-        }
+    private final EmailService emailService;
+    private final DiscountRepository discountRepository;
+private final OrderStatusService orderStatusService;
 
-        // Lấy danh sách OrderItem từ repository
-        List<OrderItem> orderItems = orderItemRepository.findAllById(orderItemIds);
+    private final ProductRepository productRepository;
 
-        // Kiểm tra nếu không tìm thấy OrderItem nào
-        if (orderItems.isEmpty()) {
-            throw new AppException(ErrorCode.ORDER_ITEM_NOT_EXISTED); // Ném exception
-        }
-
-        return orderItems;
+    public List<OrderResponse> getAllOrder(){
+       List<Order> orders=orderRepository.findAll();
+       return orders.stream().map(orderMapper::toOrderResponse)
+               .collect(Collectors.toList());
+   }
+    public Order getOrderById(Integer id) {
+        Order order=orderRepository.findById(id).
+                orElseThrow(()->new AppException(ErrorCode.ORDER_NOT_EXISTED));
+        return order;
     }
-
-    public OrderBasicResponse createOrder(OrderRequest request) {
-        // Kiểm tra User
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        // Kiểm tra Shipment
-        Shipment shipment = shipmentRepository.findById(request.getShipmentId())
-                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
-
-        // Lấy danh sách sản phẩm hợp lệ từ orderItems
-        List<OrderItem> orderItems = fetchOrderItemsFromIds(request.getOrderItemIds());
-
-       //mapper
-        Order newOrder=orderMapper.toOrder(request);
-        if(newOrder.getStatus()==null){
-            newOrder.setStatus(OrderStatusEnum.PENDING);
-        }
-        newOrder.setUser(user);
-        newOrder.setShipment(shipment);
-        // Liên kết các OrderItem với Order
-        for (OrderItem item : orderItems) {
-            item.setOrder(newOrder);
-        }
-        newOrder.setOrderItems(orderItems);
-
-        // Chuyển đổi Order thành OrderResponse
-        return mapToOrderBasicResponse(orderRepository.save(newOrder));
-    }
-    @PostAuthorize("returnObject.user.id == authentication.token.claims['userId']")
-    public OrderDetailResponse getOrderById(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
-        return mapToOrderDetailResponse(order);
-    }
-    @PostAuthorize("returnObject.user.phoneNumber == authentication.name")
-    public void deleteOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
-        order.setStatus(OrderStatusEnum.CANCELED);
-        orderRepository.save(order);
-    }
-    @PostAuthorize("returnObject.userId == authentication.token.claims['userId']")
-    public OrderBasicResponse updateOrder(OrderRequest request, Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_EXISTED));
-        orderMapper.updateOrder(order,request);
-        //kiểm tra user
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        // Kiểm tra Shipment
-        Shipment shipment = shipmentRepository.findById(request.getShipmentId())
-                .orElseThrow(() -> new AppException(ErrorCode.SHIPMENT_NOT_EXISTED));
-         // Lấy danh sách sản phẩm hợp lệ từ productId
-        List<OrderItem> orderItems = fetchOrderItemsFromIds(request.getOrderItemIds());
-
-        // Duy trì tham chiếu danh sách cũ và cập nhật
-        List<OrderItem> currentOrderItem = order.getOrderItems();
-
-        // Xóa các sản phẩm không còn trong danh sách mới
-        currentOrderItem.removeIf(orderItem -> !orderItems.contains(orderItem));
-
-        // Thêm các sản phẩm mới chưa có trong danh sách
-        for (OrderItem orderItem : orderItems) {
-            if (!currentOrderItem.contains(orderItem)) {
-                orderItem.setOrder(order); // Cập nhật liên kết ngược
-                currentOrderItem.add(orderItem);
+    public OrderResponse setStatusCancel(Integer id) {
+        Order order = getOrderById(id);
+        OrderStatus orderStatus = orderStatusService.findOrderbyId(StatusOrder.DA_HUY);
+        //Tăng lại số lượng sản phẩm
+        if(order.getOrderItems()!=null){
+            for (OrderItem orderItem : order.getOrderItems()) {
+                Product product = productRepository.findProductById(orderItem.getProduct().getId());
+                if (product != null) {
+                    product.setQuantity(product.getQuantity() + orderItem.getQuantity());
+                    productRepository.save(product);
+                }
             }
         }
-        // Cập nhật Order
-        order.setUser(user);
-        order.setShipment(shipment);
-        // Lưu Order
-        Order updatedOrder = orderRepository.save(order);
-
-        // Chuyển đổi Order thành OrderResponse thủ công
-        return mapToOrderBasicResponse(order);
+        order.setStatus(orderStatus);
+        return orderMapper.toOrderResponse(orderRepository.save(order));
     }
-    @PostAuthorize("returnObject.userId == authentication.token.claims['userId']")
-    public OrderBasicResponse updateStatusOrder(OrderStatusEnum status,Long orderId){
-        Order order=orderRepository.findById(orderId)
-                .orElseThrow(()->new AppException(ErrorCode.ORDER_NOT_EXISTED));
-        order.setStatus(status);
-        orderRepository.save(order);
-        return mapToOrderBasicResponse(order);
-    }
+    public List<OrderResponse> getOrdersByAccount(Integer id) {
 
-
-    public ResultPaginationDTO fetchAllOrders(Specification<Order> spec, Pageable pageable) {
-        Page<Order> pageOrder = orderRepository.findAll(spec, pageable);
-
-        ResultPaginationDTO rs = new ResultPaginationDTO();
-        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta();
-
-        meta.setPage(pageable.getPageNumber() + 1);
-        meta.setPageSize(pageable.getPageSize());
-        meta.setPages(pageOrder.getTotalPages());
-        meta.setTotal(pageOrder.getTotalElements());
-
-        rs.setMeta(meta); // Chuyển đổi từ Product sang ProductBasicResponse
-        List<OrderBasicResponse> listOrder = pageOrder.getContent()
-                .stream()
-                .map(this::mapToOrderBasicResponse) // Sử dụng hàm mapToProductBasicResponse
+        List<Order> orders= orderRepository.getOrdersByAccount(id);
+        return orders.stream().map(orderMapper::toOrderResponse)
                 .collect(Collectors.toList());
-        rs.setResult(listOrder);
-
-        return rs;
     }
-    @PreAuthorize("hasRole('USER')")
-    public ResultPaginationDTO fetchAllOrdersByUser(Long userId, Pageable pageable) {
-        User user=userRepository.findById(userId)
-                .orElseThrow(()->new AppException(ErrorCode.USER_NOT_EXISTED));
-        String currentUserPhone = SecurityContextHolder.getContext().getAuthentication().getName();
-        if(!user.getPhoneNumber().equals(currentUserPhone)){
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+    public List<OrderResponse> getAllOrderById(Integer id){
+        List<Order> orders= orderRepository.getAllOrderById(id);
+        return orders.stream().map(orderMapper::toOrderResponse)
+                .collect(Collectors.toList());
+    }
+    public OrderResponse cancelOrder(Integer id){
+        Order order = orderRepository.findByOrderById(id).orElse(null);
+        OrderStatus orderStatus = orderStatusService.findOrderbyId(4);
+        order.setStatus(orderStatus);
+        return orderMapper.toOrderResponse(orderRepository.save(order));
+    }
+    public List<OrderResponse> getAllOrderByStatus(Integer id){
+        List<Order> allOrder = orderRepository.getAllOrderByStatus(id);
+        allOrder.forEach(item -> {
+            item.getOrderItems().forEach(product -> {
+                System.out.println(product.getId());
+            });
+        });
+        return allOrder.stream().map(orderMapper::toOrderResponse)
+                .collect(Collectors.toList());
+    }
+    public OrderResponse postOrder(Order order){
+        return orderMapper.toOrderResponse(orderRepository.save(order));
+    }
+    public List<OrderStatusStatisticalDTO> getOrderStatusStatistical() {
+        return orderRepository.getAllProductByStatus();
+    }
+    public List<OrderYearStatisticalDTO> getAllOrderByYear(String year) {
+        return orderRepository.getAllOrderByYear(year);
+    }
+    public List<OrderTopProductStatisticalDTO> getTopProduct() {
+        return orderRepository.getTopProduct();
+    }
+    public List<OrderTopAccountStatisticalDTO> getTopAccount() {
+        return orderRepository.getTopAccount();
+    }
+    @Transactional
+    public OrderResponse   createOrder(OrderDTO orderRequestDTO) throws Exception {
+        Long totalPrice = 0L;
+        Order order = new Order();
+        order.setCreatedAt(LocalDateTime.now());
+        order.setFullname(orderRequestDTO.getFullname());
+        order.setPhone(orderRequestDTO.getPhone());
+        order.setCity(orderRequestDTO.getCity());
+        order.setDistrict(orderRequestDTO.getDistrict());
+        order.setWards(orderRequestDTO.getWards());
+        order.setSpecific_address(orderRequestDTO.getSpecificAddress());
+
+        // Kiểm tra user có tồn tại không
+        User user = userRepository.findByUserId(orderRequestDTO.getUserId());
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_EXISTED);
         }
-        // Sử dụng Specification để tìm đơn hàng của user
-        Page<Order> pageOrder = orderRepository.findAll(
-                OrderSpecifications.hasUserId(userId),
-                pageable
-        );
-        ResultPaginationDTO rs = new ResultPaginationDTO();
-        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta();
+        order.setUser(user);
 
-        meta.setPage(pageable.getPageNumber() + 1);
-        meta.setPageSize(pageable.getPageSize());
-        meta.setPages(pageOrder.getTotalPages());
-        meta.setTotal(pageOrder.getTotalElements());
-        rs.setMeta(meta);
-        List<OrderBasicResponse> listOrder = pageOrder.getContent()
-                .stream()
-                .map(this::mapToOrderBasicResponse) // Ánh xạ Order sang OrderBasicResponse
-                .collect(Collectors.toList());
-        rs.setResult(listOrder);
-        return rs;
+        order.setStatus(orderStatusService.findOrderbyId(StatusOrder.CHO_XAC_NHAN));
+
+        List<OrderItem> orderDetails = new ArrayList<>();
+        for (OrderItemDTO detailDTO : orderRequestDTO.getOrderDetails()) {
+            OrderItem orderDetail = new OrderItem();
+            orderDetail.setQuantity(detailDTO.getQuantity());
+            orderDetail.setOrder(order);
+
+            // Lấy sản phẩm từ DB
+            Product product = productRepository.findProductById(detailDTO.getProductId());
+            if (product == null) {
+                throw new Exception("Product not found with ID: " + detailDTO.getProductId());
+            }
+
+            Integer quantity = detailDTO.getQuantity();
+            if (product.getQuantity() < quantity) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
+
+            Float price = product.getPrice();
+            Long total = (long) (quantity * price);
+
+            // Xử lý giá
+            orderDetail.setAmount(Float.valueOf(total));
+            totalPrice += total;
+
+            // Giảm số lượng sản phẩm
+            product.setQuantity(product.getQuantity() - quantity);
+            productRepository.save(product);
+
+            orderDetail.setProduct(product);
+            orderDetails.add(orderDetail);
+        }
+
+        order.setOrderItems(orderDetails);
+        order.setTotalPrice(totalPrice);
+
+        // Kiểm tra discount trước khi sử dụng
+        if (orderRequestDTO.getDiscountId() != null) {
+            Discount discount = discountRepository.findById(orderRequestDTO.getDiscountId()).orElse(null);
+            if (discount != null) {
+                order.setDiscount(discount);
+                order.setTotalPrice(totalPrice * (100 - discount.getDiscount_percent()) / 100);
+            }
+        }
+
+        // Lưu order vào database
+        Order resp = orderRepository.save(order);
+
+        // Gửi email xác nhận
+        ExecutorService emailExecutor = Executors.newSingleThreadExecutor();
+        emailExecutor.execute(() -> {
+            try {
+                String email = order.getUser().getEmail();
+                String username = order.getUser().getUsername();
+                String subject = "Thư cảm ơn ";
+                String context = "Chào " + username + ",\n\n" +
+                        "Xin chân thành cảm ơn bạn đã mua hàng tại cửa hàng của chúng tôi!...\n";
+                emailService.sendEmail(subject, email, context);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        return orderMapper.toOrderResponse(resp);
     }
-    public OrderDetailResponse mapToOrderDetailResponse(Order order) {
-        // Chuyển đổi danh sách các sản phẩm trong order sang OrderItemBasicResponse
-        List<OrderDetailResponse.OrderItemResponse> orderItemResponses = order.getOrderItems().stream()
-                .map(orderItem -> OrderDetailResponse.OrderItemResponse.builder()
-                        .id(orderItem.getId())
-                        .name(orderItem.getProduct().getName())
-                        .numberOfProducts(orderItem.getNumberOfProducts())
-                        .price(orderItem.getTotalMoney())
-                        .build())
-                .collect(Collectors.toList());
-
-        // Chuyển đổi thông tin người dùng
-        OrderDetailResponse.UserResponse userResponse = OrderDetailResponse.UserResponse.builder()
-                .id(order.getUser().getId())
-                .phoneNumber(order.getUser().getPhoneNumber())
-                .email(order.getUser().getEmail())
-                .build();
-
-        // Chuyển đổi thông tin vận chuyển
-        OrderDetailResponse.ShipmentResponse shipmentResponse = OrderDetailResponse.ShipmentResponse.builder()
-                .id(order.getShipment().getId())
-                .status(order.getShipment().getStatus())
-                .build();
-
-        // Xây dựng đối tượng OrderDetailResponse
-        return OrderDetailResponse.builder()
-                .id(order.getId())
-                .orderDate(order.getOrderDate())
-                .totalPrice(order.getTotalPrice())
-                .user(userResponse)
-                .shipment(shipmentResponse)
-                .status(order.getStatus())
-                .orderItems(orderItemResponses)
-                .build();
-    }
-    public OrderBasicResponse mapToOrderBasicResponse(Order order) {
-        return OrderBasicResponse.builder()
-                .id(order.getId())
-                .orderDate(order.getOrderDate())
-                .totalPrice(order.getTotalPrice())
-                .userId(order.getUser().getId())
-                .shipmentId(order.getShipment().getId())
-                .status(order.getStatus())
-        .build();
-    }
-
-
 
 }

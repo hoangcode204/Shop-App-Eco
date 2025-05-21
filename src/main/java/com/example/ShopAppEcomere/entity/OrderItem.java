@@ -7,6 +7,8 @@ import lombok.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.io.Serializable;
+
 @Entity
 @Table(name = "orderItems")
 @Data//toString
@@ -15,13 +17,12 @@ import org.hibernate.annotations.OnDeleteAction;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class OrderItem extends Base {
+public class OrderItem extends Base  {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private int numberOfProducts;
-    private Float totalMoney;
-    private String color;
+    private Integer id;
+    private Integer quantity;
+    private Float amount;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
     @JsonBackReference

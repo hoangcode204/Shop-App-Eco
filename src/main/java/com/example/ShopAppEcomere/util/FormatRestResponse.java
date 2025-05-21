@@ -17,7 +17,6 @@ public class FormatRestResponse implements ResponseBodyAdvice<Object> {
 
     @Override
     public boolean supports(MethodParameter returnType, Class converterType) {
-        // Can thiệp vào tất cả các phản hồi
         return true;
     }
 
@@ -30,38 +29,37 @@ public class FormatRestResponse implements ResponseBodyAdvice<Object> {
             ServerHttpRequest request,
             ServerHttpResponse response) {
 
-        // Chuyển đổi ServerHttpResponse thành HttpServletResponse để lấy status code
         HttpServletResponse servletResponse = ((ServletServerHttpResponse) response).getServletResponse();
         int status = servletResponse.getStatus();
 
-        // Nếu response trả về kiểu String hoặc Resource, không cần thay đổi gì
         if (body instanceof String || body instanceof Resource) {
             return body;
         }
 
-        // Nếu status >= 400, không thay đổi gì (trả về lỗi nguyên vẹn)
         if (status >= 400) {
             return body;
-        } else {
-            // Kiểm tra nếu body là kiểu ApiResponse rồi thì không cần bao bọc lại nữa
-            if (body instanceof ApiResponse) {
-                //không cần bọc thêm ApiResponse
-                return body;
+        }
+
+        if (body instanceof ApiResponse apiResponse) {
+            // Nếu message chưa có → tự set message từ @ApiMessage
+            if (apiResponse.getMessage() == null || apiResponse.getMessage().isEmpty()) {
+                ApiMessage apiMessage = returnType.getMethodAnnotation(ApiMessage.class);
+                String message = apiMessage != null ? apiMessage.value() : "CALL API SUCCESS";
+                apiResponse.setMessage(message);
             }
-
-            // Khởi tạo đối tượng ApiResponse để trả về
-            ApiResponse<Object> apiResponse = new ApiResponse<>();
-            apiResponse.setCode(1000);  // Mã code mặc định
-
-            // Lấy annotation ApiMessage và thiết lập message
-            ApiMessage apiMessage = returnType.getMethodAnnotation(ApiMessage.class);
-            String message = apiMessage != null ? apiMessage.value() : "CALL API SUCCESS";
-            apiResponse.setMessage(message);
-
-            // Thiết lập dữ liệu (body) trả về
-            apiResponse.setResult(body);
-
             return apiResponse;
         }
+
+        ApiResponse<Object> apiResponse = new ApiResponse<>();
+        apiResponse.setCode(1000);
+
+        ApiMessage apiMessage = returnType.getMethodAnnotation(ApiMessage.class);
+        String message = apiMessage != null ? apiMessage.value() : "CALL API SUCCESS";
+        apiResponse.setMessage(message);
+
+        apiResponse.setResult(body);
+
+        return apiResponse;
     }
 }
+

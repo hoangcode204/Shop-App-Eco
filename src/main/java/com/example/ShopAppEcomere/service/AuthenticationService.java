@@ -112,8 +112,7 @@ public class AuthenticationService {
                 .findByEmail(userInfo.getEmail())
                 .orElseGet(() -> userRepository.save(User.builder()
                         .email(userInfo.getEmail())
-                        .firstName(userInfo.getGivenName())
-                        .lastName(userInfo.getFamilyName())
+                        .fullName(userInfo.getGivenName())
                         .roles(Set.of(userRole))
                         .build()));
 
@@ -125,7 +124,7 @@ public class AuthenticationService {
 
     public AuthenticationResponse authenticate(AuthenticationRequest request){
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-        User user = userRepository.findByPhoneNumber(request.getUsername())
+        User user = userRepository.findByEmail(request.getUsername())
                 .orElseGet(() -> userRepository.findByEmail(request.getUsername())
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED)));
         boolean authenticated = passwordEncoder.matches(request.getPassword(),
@@ -160,8 +159,8 @@ public class AuthenticationService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);//Tạo header
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getPhoneNumber())
-                .issuer("devteria.com")
+                .subject(user.getEmail())//lấy mail làm sub
+                .issuer("huyhoang.com")
                 .issueTime(new Date())//thời gian phát hành token
                 .expirationTime(new Date(
                         Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
@@ -195,10 +194,11 @@ public class AuthenticationService {
 
         invalidatedTokenRepository.save(invalidatedToken);
 
-        var phoneNumber = signedJWT.getJWTClaimsSet().getSubject();
+//        var phoneNumber = signedJWT.getJWTClaimsSet().getSubject();
+        var email=signedJWT.getJWTClaimsSet().getSubject();
 
         var user =
-                userRepository.findByPhoneNumber(phoneNumber).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+                userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         var token = generateToken(user);
 

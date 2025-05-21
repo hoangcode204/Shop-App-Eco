@@ -1,25 +1,27 @@
 package com.example.ShopAppEcomere.mapper;
 
-import com.example.ShopAppEcomere.dto.request.OrderRequest;
-
+import com.example.ShopAppEcomere.dto.response.order.OrderResponse;
+import com.example.ShopAppEcomere.dto.response.order.OrderStatusResponse;
 import com.example.ShopAppEcomere.entity.Order;
+import com.example.ShopAppEcomere.entity.OrderStatus;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
+import org.mapstruct.Named;
 
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
 
-    // Chuyển từ OrderRequest sang Order entity
-    @Mapping(target = "user", ignore = true) // Bỏ qua để xử lý riêng
-    @Mapping(target = "shipment", ignore = true) // Bỏ qua để xử lý riêng
-    @Mapping(target = "orderItems", ignore = true) // Bỏ qua để xử lý riêng
-    Order toOrder(OrderRequest request);
+    @Mapping(source = "status", target = "status", qualifiedByName = "mapOrderStatus")
+    OrderResponse toOrderResponse(Order order);
 
+    @Named("mapOrderStatus")
+    default OrderStatusResponse mapOrderStatus(OrderStatus status) {
+        if (status == null) {
+            return null;
+        }
+        OrderStatusResponse response = new OrderStatusResponse();
+        response.setStatus(status.getStatus());
+        return response;
+    }
 
-    // Cập nhật Order entity từ OrderRequest
-    @Mapping(target = "user", ignore = true) // Bỏ qua vì user không thay đổi ở đây
-    @Mapping(target = "shipment", ignore = true) // Bỏ qua vì shipment không thay đổi ở đây
-    @Mapping(target = "orderItems", ignore = true) // Xử lý riêng nếu cần cập nhật orderItems
-    void updateOrder(@MappingTarget Order order, OrderRequest request);
 }

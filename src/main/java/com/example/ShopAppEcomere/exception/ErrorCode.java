@@ -27,6 +27,16 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     PASSWORD_EXISTED(1009, "Password is exited", HttpStatus.BAD_REQUEST),
+    ADDRESS_NOT_EXISTED(1010,"Address is not exited",HttpStatus.NOT_FOUND),
+    CANNOT_DELETE_DEFAULT_ADDRESS(1011,"Can not delete default address",HttpStatus.BAD_REQUEST),
+    ADDRESS_DEFAULT_NOT_FOUND(1012,"Address_default is not exited",HttpStatus.NOT_FOUND),
+    ADDRESS_ALREADY_DEFAULT(1013,"Address is exited",HttpStatus.BAD_REQUEST),
+    CATEGORY_NOT_FOUND(1014,"Category not found",HttpStatus.NOT_FOUND),
+    PASSWORD_INCORRECT(1015,"Password incorrect",HttpStatus.BAD_REQUEST),
+    INVALID_ORDER_STATUS(1016,"INVALID_ORDER_STATUS",HttpStatus.BAD_REQUEST),
+    OUT_OF_STOCK(1017,"Out of stock",HttpStatus.BAD_REQUEST),
+    GALLERY_NOT_EXISTED(1018,"Gallery not existed",HttpStatus.NOT_FOUND),
+
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

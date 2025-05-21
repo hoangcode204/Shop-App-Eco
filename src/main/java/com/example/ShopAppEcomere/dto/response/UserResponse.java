@@ -1,22 +1,29 @@
 package com.example.ShopAppEcomere.dto.response;
 
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Getter
 @Setter
 @Builder
 public class UserResponse {
     private long id;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private String address;
-    private String phoneNumber;
+    String email;
+    String username;
+    String fullName;
+    String phoneNumber;
+    private Boolean gender;
+    private Date date_of_birth;
+    private String img;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Boolean active;
+    private Date delete_at;
+
 }
