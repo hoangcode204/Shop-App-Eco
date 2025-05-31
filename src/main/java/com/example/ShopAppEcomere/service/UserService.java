@@ -3,21 +3,22 @@ package com.example.ShopAppEcomere.service;
 import com.example.ShopAppEcomere.dto.request.PasswordCreationRequest;
 import com.example.ShopAppEcomere.dto.request.UserRequest;
 import com.example.ShopAppEcomere.dto.response.UserResponse;
+import com.example.ShopAppEcomere.entity.ResetPasswordToken;
 import com.example.ShopAppEcomere.entity.Role;
 import com.example.ShopAppEcomere.entity.User;
 import com.example.ShopAppEcomere.exception.AppException;
 import com.example.ShopAppEcomere.exception.ErrorCode;
 import com.example.ShopAppEcomere.mapper.UserMapper;
+import com.example.ShopAppEcomere.repository.ResetPasswordTokenRepository;
 import com.example.ShopAppEcomere.repository.RoleRepository;
 import com.example.ShopAppEcomere.repository.UserRepository;
+import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -37,6 +38,9 @@ public class UserService {
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
     CloudinaryImageService cloudinaryImageService;
+    ResetPasswordTokenRepository resetPasswordTokenRepository;
+    EmailService emailService;
+    private static final long RESET_TOKEN_EXPIRATION_MINUTES = 15; // 15 phút
 
     public List<UserResponse> getAll() {
         List<User> users= userRepository.findAll();
@@ -47,27 +51,20 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.findUserByEmailAndPassword(email, password));
     }
 
-    public UserResponse createUser(UserRequest request, MultipartFile file){
-        // Kiểm tra xem email đã tồn tại chưa
+    public UserResponse createUser(UserRequest request){
+        // **1.Kiểm tra xem email đã tồn tại chưa
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
-
-        // **1. Upload ảnh lên Cloudinary**
-        String imageUrl = cloudinaryImageService.upload(file);
-
-        // **2. Gán URL ảnh vào UserRequest**
-        request.setImg(imageUrl);
-
-        // **3. Chuyển đổi UserRequest thành User**
+        // **2. Chuyển đổi UserRequest thành User**
         User newUser = userMapper.toUser(request);
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // **4. Gán quyền USER cho user mới**
+        // **3. Gán quyền USER cho user mới**
         Role userRole = roleRepository.findByName("USER");
         newUser.setRoles(Set.of(userRole));
 
-        // **5. Lưu vào database**
+        // **4. Lưu vào database**
         User savedUser = userRepository.save(newUser);
 
         return userMapper.toUserResponse(savedUser);
@@ -122,6 +119,98 @@ public class UserService {
         Date currenDate = new Date();
         user.setDeletedAt(currenDate);
         return userMapper.toUserResponse(userRepository.save(user));
+    }
+    @Transactional
+    public String generateAndSaveResetToken(User user) {
+        String token = UUID.randomUUID().toString();
+        ResetPasswordToken resetToken = ResetPasswordToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRATION_MINUTES))
+                .build();
+
+        resetPasswordTokenRepository.save(resetToken);
+        return token;
+    }
+    public void handlePasswordResetRequest(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Tạo và lưu token dưới transaction
+        String token = generateAndSaveResetToken(user);
+
+        // Gửi email (không nằm trong transaction)
+        sendResetEmail(user, token);
+    }
+    private void sendResetEmail(User user, String token) {
+        String resetLink = "https://yourdomain.com/reset-password?token=" + token;
+        String subject = "Yêu cầu đặt lại mật khẩu";
+        String body = "Xin chào " + user.getFullName() + ",\n\n" +
+                "Bạn hoặc ai đó đã yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n" +
+                "Vui lòng truy cập đường link sau để đặt lại mật khẩu (hết hạn trong 15 phút):\n" +
+                resetLink + "\n\n" +
+                "Nếu bạn không yêu cầu, hãy bỏ qua email này.";
+
+        try {
+            emailService.sendEmail(subject, user.getEmail(), body);
+        } catch (MessagingException e) {
+            // Ghi log, không throw ra ngoài để không ảnh hưởng user experience
+            log.error("Lỗi khi gửi email đặt lại mật khẩu tới {}: {}", user.getEmail(), e.getMessage());
+        }
+    }
+//    public void requestPasswordReset(String email) throws MessagingException {
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+//
+//        // Tạo token reset password: bạn có thể dùng UUID
+//        String token = UUID.randomUUID().toString();
+//
+//        // Lưu token vào database cùng với user và thời gian hết hạn
+//        ResetPasswordToken resetToken = ResetPasswordToken.builder()
+//                .token(token)
+//                .user(user)
+//                .expiryDate(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRATION_MINUTES))
+//                .build();
+//
+//        resetPasswordTokenRepository.save(resetToken);
+//           log.info("Token la ",resetToken.getToken());
+//        // Gửi mail cho user với link reset
+//        String resetLink = "https://yourdomain.com/reset-password?token=" + token;
+//
+//        String subject = "Yêu cầu đặt lại mật khẩu";
+//        String body = "Xin chào " + user.getFullName() + ",\n\n" +
+//                "Bạn hoặc ai đó đã yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n" +
+//                "Vui lòng truy cập đường link sau để đặt lại mật khẩu (hết hạn trong 15 phút):\n" +
+//                resetLink + "\n\n" +
+//                "Nếu bạn không yêu cầu, hãy bỏ qua email này.";
+//
+//        emailService.sendEmail(subject, user.getEmail(), body);
+//
+//        log.info("Gửi email reset mật khẩu tới: {}", email);
+//    }
+    // --- Bước 2: Reset mật khẩu bằng token ---
+    public UserResponse resetPassword(String token, String newPassword) {
+        ResetPasswordToken resetToken = resetPasswordTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_RESET_TOKEN));
+
+        // Kiểm tra token hết hạn chưa
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.RESET_TOKEN_EXPIRED);
+        }
+
+        User user = resetToken.getUser();
+        log.info("Token reset password: {}", token);
+
+        // Cập nhật mật khẩu mới đã mã hóa
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Xoá hoặc đánh dấu token đã dùng
+        resetPasswordTokenRepository.delete(resetToken);
+
+        log.info("Reset mật khẩu thành công cho user: {}", user.getEmail());
+
+        return userMapper.toUserResponse(user);
     }
 
 }

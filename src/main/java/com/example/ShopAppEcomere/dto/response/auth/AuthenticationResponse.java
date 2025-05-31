@@ -1,5 +1,6 @@
 package com.example.ShopAppEcomere.dto.response.auth;
 
+import com.example.ShopAppEcomere.dto.response.UserResponse;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -11,4 +12,5 @@ import lombok.experimental.FieldDefaults;
 public class AuthenticationResponse {
     String token;
     boolean authenticated;
+    UserResponse user;
 }

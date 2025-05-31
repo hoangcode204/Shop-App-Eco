@@ -1,4 +1,5 @@
 package com.example.ShopAppEcomere.dto.response.auth;
+import com.example.ShopAppEcomere.dto.response.UserResponse;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -9,4 +10,5 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class IntrospectResponse {
     boolean valid;
+
 }

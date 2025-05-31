@@ -8,6 +8,7 @@ import com.example.ShopAppEcomere.entity.Role;
 import com.example.ShopAppEcomere.entity.User;
 import com.example.ShopAppEcomere.exception.AppException;
 import com.example.ShopAppEcomere.exception.ErrorCode;
+import com.example.ShopAppEcomere.mapper.UserMapper;
 import com.example.ShopAppEcomere.repository.InvalidatedTokenRepository;
 import com.example.ShopAppEcomere.repository.RoleRepository;
 import com.example.ShopAppEcomere.repository.UserRepository;
@@ -45,6 +46,7 @@ public class AuthenticationService {
     OutboundShopAppClient outboundShopAppClient;
     OutboundUserClient outboundUserClient;
     RoleRepository roleRepository;
+    UserMapper userMapper;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -124,8 +126,8 @@ public class AuthenticationService {
 
     public AuthenticationResponse authenticate(AuthenticationRequest request){
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-        User user = userRepository.findByEmail(request.getUsername())
-                .orElseGet(() -> userRepository.findByEmail(request.getUsername())
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseGet(() -> userRepository.findByEmail(request.getEmail())
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED)));
         boolean authenticated = passwordEncoder.matches(request.getPassword(),
                 user.getPassword());
@@ -137,6 +139,7 @@ public class AuthenticationService {
 
         return AuthenticationResponse.builder()
                 .token(token)
+                .user(userMapper.toUserResponse(user))
                 .authenticated(true)
                 .build();
     }

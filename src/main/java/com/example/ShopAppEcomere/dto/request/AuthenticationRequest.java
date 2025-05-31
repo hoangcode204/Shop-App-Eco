@@ -11,7 +11,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AuthenticationRequest {
     @NotBlank(message = "Username khong duoc de trong!")
-    String username;
+    String email;
     @NotBlank(message = "Password khong duoc de trong!")
     String password;
 }

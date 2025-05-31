@@ -36,6 +36,8 @@ public enum ErrorCode {
     INVALID_ORDER_STATUS(1016,"INVALID_ORDER_STATUS",HttpStatus.BAD_REQUEST),
     OUT_OF_STOCK(1017,"Out of stock",HttpStatus.BAD_REQUEST),
     GALLERY_NOT_EXISTED(1018,"Gallery not existed",HttpStatus.NOT_FOUND),
+    INVALID_RESET_TOKEN(1019,"Invalid reset token",HttpStatus.BAD_REQUEST),
+    RESET_TOKEN_EXPIRED(1020,"Reset token expired",HttpStatus.BAD_REQUEST),
 
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),;
 

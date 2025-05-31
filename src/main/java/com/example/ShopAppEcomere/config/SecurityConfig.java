@@ -36,7 +36,9 @@ public class SecurityConfig {
             "/api/v1/orders/statistical/year",
             "/api/v1/orders",
             "/api/v1/orders/postdetails",
-            "/api/v1/users/register"
+            "/api/v1/users/register",
+            "/api/v1/users/request-password-reset",
+            "/api/v1/users/reset-password"
 
     };
 

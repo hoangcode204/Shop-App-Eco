@@ -22,9 +22,9 @@ public class ProductController {
     @PostMapping("/products")
     @ApiMessage("Create a new product")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ApiResponse<ProductResponse> postSave(@RequestPart("product") ProductRequest request, MultipartFile file){
+    public ApiResponse<ProductResponse> postSave(@RequestBody ProductRequest request){
         return ApiResponse.<ProductResponse>builder()
-                .result(productService.create(request,file))
+                .result(productService.create(request))
                 .build();
     }
     @GetMapping("/products/{productId}")

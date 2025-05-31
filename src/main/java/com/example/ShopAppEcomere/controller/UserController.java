@@ -8,6 +8,7 @@ import com.example.ShopAppEcomere.entity.User;
 import com.example.ShopAppEcomere.service.EmailService;
 import com.example.ShopAppEcomere.service.UserService;
 import com.example.ShopAppEcomere.validator.ApiMessage;
+import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -30,33 +31,15 @@ public class UserController {
     UserService userService;
     EmailService emailService;
 
-    @PostMapping(value = "/register",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ApiResponse<UserResponse> createUser(@RequestPart("user")  UserRequest request, @RequestPart("image") MultipartFile file){
-        UserResponse userResponse = userService.createUser(request, file);
+    @PostMapping( "/register")
+    ApiResponse<UserResponse> createUser(@RequestBody UserRequest request){
+        UserResponse userResponse = userService.createUser(request);
         // Gửi email thông báo đăng ký thành công (chạy bất đồng bộ)
         sendRegistrationEmail(request.getEmail(), request.getUsername());
         return ApiResponse.<UserResponse>builder()
                 .result(userResponse)
                 .build();
     }
-//    private void sendRegistrationEmail(String email, String username) {
-//        CompletableFuture.runAsync(() -> {
-//            try {
-//                String subject = "Đăng ký tài khoản thành công";
-//                String content = String.format(
-//                        "Chào %s,\n\nCảm ơn bạn đã đăng ký tài khoản tại cửa hàng của chúng tôi!\n" +
-//                                "Tài khoản của bạn đã được tạo thành công. Nếu có bất kỳ câu hỏi hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi.\n\n" +
-//                                "Trân trọng,\nCửa hàng của chúng tôi.",
-//                        username
-//                );
-//
-//                emailService.sendEmail(subject, email, content);
-//                System.out.println(" Email đăng ký đã gửi thành công!");
-//            } catch (Exception e) {
-//                System.err.println("Lỗi khi gửi email: " + e.getMessage());
-//            }
-//        });
-//    }
 private void sendRegistrationEmail(String email, String username) {
     CompletableFuture.runAsync(() -> {
         try {
@@ -121,6 +104,21 @@ private void sendRegistrationEmail(String email, String username) {
     ApiResponse<UserResponse> updateUser(@PathVariable Integer userId, @RequestPart("user")  UserRequest request, @RequestPart("image") MultipartFile file){
         return ApiResponse.<UserResponse>builder()
                 .result(userService.update(userId, request,file))
+                .build();
+    }
+    @PostMapping("/request-password-reset")
+    ApiResponse<String> requestPasswordReset(@RequestBody String email) throws MessagingException {
+        userService.handlePasswordResetRequest(email);
+        return ApiResponse.<String>builder()
+                .result("Yêu cầu đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra email của bạn.")
+                .build();
+    }
+
+    @PostMapping("/reset-password")
+    ApiResponse<String> resetPassword(@RequestParam("token") String token, @RequestParam("newPassword") String newPassword) {
+        userService.resetPassword(token, newPassword);
+        return ApiResponse.<String>builder()
+                .result("Mật khẩu đã được đặt lại thành công.")
                 .build();
     }
 }

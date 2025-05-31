@@ -75,17 +75,11 @@ public class ProductService {
         return products.stream().map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
-    public ProductResponse create(ProductRequest productRequest, MultipartFile file) {
+    public ProductResponse create(ProductRequest productRequest) {
 
         // Tìm category từ ID
         Category category = categoryRepository.findById(productRequest.getCategory_id())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
-        // **1. Upload ảnh lên Cloudinary**
-        String imageUrl = cloudinaryImageService.upload(file);
-
-        // **2. Gán URL ảnh vào UserRequest**
-          productRequest.setImg(imageUrl);
-
         // Chuyển từ request → entity
         Product newProduct = productMapper.toProduct(productRequest);
         newProduct.setCategory(category);

@@ -13,10 +13,11 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE")
-                        .allowedOriginPatterns("*")  // Thay vì allowedOrigins("*")
-                        .allowCredentials(true)      // Nếu FE gửi cookie
-                        .allowedHeaders("*");        // Cho phép tất cả headers
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedOrigins("http://localhost:5173") // Thay đổi thành domain của frontend
+                        .allowCredentials(true)
+                        .allowedHeaders("*");
+
             }
         };
     }
