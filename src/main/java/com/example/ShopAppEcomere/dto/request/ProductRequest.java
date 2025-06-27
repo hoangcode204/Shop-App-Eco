@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,4 +19,8 @@ public class ProductRequest {
     private String img;
     private Integer quantity;
     private Integer category_id;
+    private String brand;
+    private Float promotionalPrice;
+    private String descriptionShort;
+
 }

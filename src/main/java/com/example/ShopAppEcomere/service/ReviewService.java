@@ -35,11 +35,11 @@ public class ReviewService {
         Review review = new Review();
         review.setComment(reviewRequest.getComment());
         review.setCreated_at(LocalDateTime.now());
+        review.setRating(reviewRequest.getRating()); // ⭐ Thêm dòng này
         // Lấy Account từ userId
         User user = userRepository.findById(reviewRequest.getUser_id())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         review.setUser(user);
-
         // Lấy Product từ productId
         Product product = productRepository.findById(reviewRequest.getProduct_id())
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_EXISTED));
@@ -49,6 +49,12 @@ public class ReviewService {
     public List<ReviewResponse> getReviewsByProductId(Integer id) {
         List<Review> reviewList=reviewRepository.getReviewByProductId(id);
         return reviewList.stream().map(reviewMapper::toReviewResponse)
+                .collect(Collectors.toList());
+    }
+    public List<Integer> getReviewedProductIdsByUserId(Integer userId) {
+        List<Review> reviews = reviewRepository.getReviewsByUserId(userId);
+        return reviews.stream()
+                .map(r -> r.getProduct().getId())
                 .collect(Collectors.toList());
     }
 }

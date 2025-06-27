@@ -52,6 +52,7 @@ public interface OrderRepository extends JpaRepository<Order,Integer> {
             "GROUP BY a.id, a.email, a.fullName, a.img " +
             "ORDER BY SUM(b.totalPrice) DESC")
     List<OrderTopAccountStatisticalDTO> getTopAccount();
+    Optional<Order> findByVnpTxnRef(String vnpTxnRef);
 
 
 }

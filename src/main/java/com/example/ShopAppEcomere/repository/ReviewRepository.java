@@ -11,4 +11,7 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Review, Integer> {
     @Query("select o from Review o where o.product.id = :id")
     List<Review> getReviewByProductId(Integer id);
+
+    @Query("select o from Review o where o.user.id = :userId")
+    List<Review> getReviewsByUserId(Integer userId);
 }

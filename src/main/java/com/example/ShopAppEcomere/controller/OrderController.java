@@ -53,7 +53,15 @@ public class OrderController {
                 .result(orderService.getAllOrderByStatus(id))
                 .build();
     }
-
+    @GetMapping("/status/{userId}/{statusId}")
+    @ApiMessage("Fetch all orders by userid and status id")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
+    public ApiResponse<List<OrderResponse>> getAllOrderByStatus(@PathVariable("userId") Integer user,
+                                                                @PathVariable("statusId") Integer id) {
+        return ApiResponse.<List<OrderResponse>>builder()
+                .result(orderService.getAllOrderByStatus(id))
+                .build();
+    }
     @GetMapping("/user/{id}")
     @ApiMessage("Get all orders by user ")
     @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
@@ -74,7 +82,6 @@ public class OrderController {
 
     @GetMapping("/statistical/topproduct")
     @ApiMessage("Get top product ")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResponse<List<OrderTopProductStatisticalDTO>> getProductTop() {
         return ApiResponse.<List<OrderTopProductStatisticalDTO>>builder()
                 .result(orderService.getTopProduct())
@@ -188,7 +195,7 @@ public class OrderController {
 
     @GetMapping("/details")
     @ApiMessage("Get all order details")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
     public ApiResponse<List<OrderItemResponse>> getAllDetails() {
         return ApiResponse.<List<OrderItemResponse>>builder()
                 .result(orderItemService.getAll())

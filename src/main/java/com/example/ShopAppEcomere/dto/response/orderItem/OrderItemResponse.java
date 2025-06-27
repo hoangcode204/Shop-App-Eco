@@ -9,8 +9,8 @@ import lombok.Setter;
 @Setter
 public class OrderItemResponse {
 
-    private Long id;
+    private Integer id;
     private Integer quantity;
-    private Long productId;
-    private Long amount;
+    private Integer productId;
+    private Float amount;
 }

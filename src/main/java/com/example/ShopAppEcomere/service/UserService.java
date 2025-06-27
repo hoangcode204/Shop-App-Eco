@@ -90,7 +90,7 @@ public class UserService {
         return userMapper.toUserResponse(user);
     }
 
-    public UserResponse update(Integer userId, UserRequest request, MultipartFile file) {
+    public UserResponse update(Integer userId, UserRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
@@ -101,14 +101,8 @@ public class UserService {
             user.setPhoneNumber(request.getPhoneNumber());
             user.setGender(request.getGender());
             user.setDate_of_birth(request.getDate_of_birth());
+            user.setImg(request.getImg()); // 💡 Đảm bảo dòng này tồn tại!
         }
-
-        // Nếu có file ảnh thì upload lên Cloudinary
-        if (file != null && !file.isEmpty()) {
-            String url = cloudinaryImageService.upload(file);
-            user.setImg(url);  // Cập nhật URL ảnh mới
-        }
-
         user.setUpdatedAt(LocalDateTime.now());
         return userMapper.toUserResponse(userRepository.save(user));
     }
@@ -143,7 +137,7 @@ public class UserService {
         sendResetEmail(user, token);
     }
     private void sendResetEmail(User user, String token) {
-        String resetLink = "https://yourdomain.com/reset-password?token=" + token;
+        String resetLink = "http://localhost:8086/reset-password?token=" + token;
         String subject = "Yêu cầu đặt lại mật khẩu";
         String body = "Xin chào " + user.getFullName() + ",\n\n" +
                 "Bạn hoặc ai đó đã yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n" +
@@ -158,36 +152,6 @@ public class UserService {
             log.error("Lỗi khi gửi email đặt lại mật khẩu tới {}: {}", user.getEmail(), e.getMessage());
         }
     }
-//    public void requestPasswordReset(String email) throws MessagingException {
-//        User user = userRepository.findByEmail(email)
-//                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-//
-//        // Tạo token reset password: bạn có thể dùng UUID
-//        String token = UUID.randomUUID().toString();
-//
-//        // Lưu token vào database cùng với user và thời gian hết hạn
-//        ResetPasswordToken resetToken = ResetPasswordToken.builder()
-//                .token(token)
-//                .user(user)
-//                .expiryDate(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRATION_MINUTES))
-//                .build();
-//
-//        resetPasswordTokenRepository.save(resetToken);
-//           log.info("Token la ",resetToken.getToken());
-//        // Gửi mail cho user với link reset
-//        String resetLink = "https://yourdomain.com/reset-password?token=" + token;
-//
-//        String subject = "Yêu cầu đặt lại mật khẩu";
-//        String body = "Xin chào " + user.getFullName() + ",\n\n" +
-//                "Bạn hoặc ai đó đã yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n" +
-//                "Vui lòng truy cập đường link sau để đặt lại mật khẩu (hết hạn trong 15 phút):\n" +
-//                resetLink + "\n\n" +
-//                "Nếu bạn không yêu cầu, hãy bỏ qua email này.";
-//
-//        emailService.sendEmail(subject, user.getEmail(), body);
-//
-//        log.info("Gửi email reset mật khẩu tới: {}", email);
-//    }
     // --- Bước 2: Reset mật khẩu bằng token ---
     public UserResponse resetPassword(String token, String newPassword) {
         ResetPasswordToken resetToken = resetPasswordTokenRepository.findByToken(token)
@@ -212,5 +176,10 @@ public class UserService {
 
         return userMapper.toUserResponse(user);
     }
+    public User getUserByUsername(String username) {
+        return userRepository.findByEmail(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+    }
+
 
 }

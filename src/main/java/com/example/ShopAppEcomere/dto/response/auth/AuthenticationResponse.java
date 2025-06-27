@@ -11,6 +11,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AuthenticationResponse {
     String token;
+    private String refreshToken;   // Thêm dòng này
     boolean authenticated;
     UserResponse user;
 }

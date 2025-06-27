@@ -129,16 +129,19 @@ public class AuthenticationService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseGet(() -> userRepository.findByEmail(request.getEmail())
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED)));
-        boolean authenticated = passwordEncoder.matches(request.getPassword(),
-                user.getPassword());
+
+        boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
         if (!authenticated)
             throw new AppException(ErrorCode.UNAUTHENTICATED);
 
-        var token = generateToken(user);
+        // Tạo access và refresh token
+        var accessToken = generateToken(user);
+        var refreshToken = generateRefreshToken(user);
 
         return AuthenticationResponse.builder()
-                .token(token)
+                .token(accessToken)
+                .refreshToken(refreshToken)
                 .user(userMapper.toUserResponse(user))
                 .authenticated(true)
                 .build();
@@ -157,7 +160,29 @@ public class AuthenticationService {
 
         invalidatedTokenRepository.save(invalidatedToken);
     }
+    private String generateRefreshToken(User user) {
+        JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
+        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
+                .subject(user.getEmail())
+                .issuer("huyhoang.com")
+                .issueTime(new Date())
+                .expirationTime(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) // 7 ngày
+                .jwtID(UUID.randomUUID().toString())
+                .claim("type", "refresh") // Phân biệt token refresh
+                .build();
+
+        Payload payload = new Payload(jwtClaimsSet.toJSONObject());
+        JWSObject jwsObject = new JWSObject(header, payload);
+
+        try {
+            jwsObject.sign(new MACSigner(SIGNER_KEY.getBytes()));
+            return jwsObject.serialize();
+        } catch (JOSEException e) {
+            log.error("Cannot create refresh token", e);
+            throw new RuntimeException(e);
+        }
+    }
     private String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);//Tạo header
 
@@ -165,9 +190,7 @@ public class AuthenticationService {
                 .subject(user.getEmail())//lấy mail làm sub
                 .issuer("huyhoang.com")
                 .issueTime(new Date())//thời gian phát hành token
-                .expirationTime(new Date(
-                        Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
-                ))//tg hết hạn token
+                .expirationTime(new Date(System.currentTimeMillis() + VALID_DURATION * 1000))
                 .jwtID(UUID.randomUUID().toString())//mã định danh id
                 .claim("scope", buildScope(user))
                 .claim("userId", user.getId()) // Thêm userId vào token
@@ -186,27 +209,44 @@ public class AuthenticationService {
             throw new RuntimeException(e);
         }
     }
+
     public AuthenticationResponse refreshToken(RefreshRequest request) throws ParseException, JOSEException {
-        var signedJWT = verifyToken(request.getToken(), true);
+        // 1. Xác minh và vô hiệu hóa refresh token cũ
+        var signedJWT = verifyToken(request.getToken(), true); // 'true' để xác minh là refresh token
 
-        var jit = signedJWT.getJWTClaimsSet().getJWTID();//id của token
-        var expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();//tgian hết hạn của token
+        if (!"refresh".equals(signedJWT.getJWTClaimsSet().getClaim("type"))) {
+            throw new AppException(ErrorCode.UNAUTHORIZED); // Đảm bảo đúng loại token
+        }
 
-        InvalidatedToken invalidatedToken =
-                InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build();
+        var jit = signedJWT.getJWTClaimsSet().getJWTID();
+        var expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
-        invalidatedTokenRepository.save(invalidatedToken);
+        // Vô hiệu hóa refresh token cũ ngay lập tức sau khi sử dụng
+        invalidatedTokenRepository.save(
+                InvalidatedToken.builder()
+                        .id(jit)
+                        .expiryTime(expiryTime)
+                        .build()
+        );
 
-//        var phoneNumber = signedJWT.getJWTClaimsSet().getSubject();
-        var email=signedJWT.getJWTClaimsSet().getSubject();
+        // 2. Tìm người dùng từ email trong refresh token cũ
+        var email = signedJWT.getJWTClaimsSet().getSubject();
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
-        var user =
-                userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+        // 3. Tạo cặp token MỚI (access token và refresh token mới)
+        var newAccessToken = generateToken(user);        // Tạo access token mới
+        var newRefreshToken = generateRefreshToken(user); // ✅ Tạo refresh token MỚI
 
-        var token = generateToken(user);
-
-        return AuthenticationResponse.builder().token(token).authenticated(true).build();
+        // 4. Trả về cả access token MỚI và refresh token MỚI
+        return AuthenticationResponse.builder()
+                .token(newAccessToken)
+                .refreshToken(newRefreshToken) // ✅ BẮT BUỘC phải trả về refresh token MỚI ở đây
+                .authenticated(true)
+                .user(userMapper.toUserResponse(user))
+                .build();
     }
+
     private SignedJWT verifyToken(String token,boolean isRefresh) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes()); //khơỉ tạo đối tượng xác minh token
 

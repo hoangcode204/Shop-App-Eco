@@ -18,7 +18,7 @@ import java.util.List;
 public class DiscountController {
     private final DiscountService discountService;
     @GetMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
     @ApiMessage("Fetch all discounts")
     public ApiResponse<List<DiscountResponse>> getAllDiscounts() {
         return ApiResponse.<List<DiscountResponse>>builder()
@@ -27,7 +27,7 @@ public class DiscountController {
     }
     @GetMapping("/{id}")
     @ApiMessage("Fetch discount by ID")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
     public ApiResponse<DiscountResponse> getDiscountById(@PathVariable Integer id) {
         return ApiResponse.<DiscountResponse>builder()
                 .result(discountService.getDiscountById(id))

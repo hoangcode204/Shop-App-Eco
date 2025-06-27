@@ -14,7 +14,7 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedOrigins("http://localhost:5173") // Thay đổi thành domain của frontend
+                        .allowedOrigins("http://localhost:5173","http://127.0.0.1:5500","http://localhost:8086","http://localhost:3000") // Thay đổi thành domain của frontend
                         .allowCredentials(true)
                         .allowedHeaders("*");
 

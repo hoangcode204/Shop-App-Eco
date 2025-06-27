@@ -19,11 +19,15 @@ public class Product extends Base {
     private Integer id;
 
     private String name_product;
+    @Column(columnDefinition = "TEXT")
     private String description;
     private Float price;
     private String img;
     private Integer quantity;
-
+    private String brand;
+    private Float promotionalPrice;
+    private String descriptionShort;
+    private Long totalSold = 0L;
     // Quan hệ với Category
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
@@ -44,4 +48,6 @@ public class Product extends Base {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Review> reviews;
+
+
 }

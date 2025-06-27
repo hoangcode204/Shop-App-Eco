@@ -28,6 +28,8 @@ public class OrderService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final DiscountRepository discountRepository;
+    private final WebSocketService webSocketService;
+    private  final NotificationService notificationService;
 private final OrderStatusService orderStatusService;
 
     private final ProductRepository productRepository;
@@ -56,6 +58,11 @@ private final OrderStatusService orderStatusService;
             }
         }
         order.setStatus(orderStatus);
+        // Gửi thông báo WebSocket cho admin
+        webSocketService.sendCancelledOrderNotification(order.getId(), order.getFullname());
+        // Lưu thông báo vào DB cho admin
+        String cancelMessage = String.format("Đơn hàng #%d của khách hàng %s đã bị hủy.", order.getId(), order.getFullname());
+        notificationService.createNotificationForAdmins(order, cancelMessage);
         return orderMapper.toOrderResponse(orderRepository.save(order));
     }
     public List<OrderResponse> getOrdersByAccount(Integer id) {
@@ -85,6 +92,7 @@ private final OrderStatusService orderStatusService;
         return allOrder.stream().map(orderMapper::toOrderResponse)
                 .collect(Collectors.toList());
     }
+
     public OrderResponse postOrder(Order order){
         return orderMapper.toOrderResponse(orderRepository.save(order));
     }
@@ -167,7 +175,11 @@ private final OrderStatusService orderStatusService;
 
         // Lưu order vào database
         Order resp = orderRepository.save(order);
-
+        // Gửi thông báo WebSocket cho admin
+        webSocketService.sendNewOrderNotification(resp.getId(), resp.getFullname());
+        // Lưu thông báo vào DB cho admin
+        String newMessage = String.format("Bạn có đơn hàng mới #%d từ khách hàng %s.", resp.getId(), resp.getFullname());
+        notificationService.createNotificationForAdmins(resp, newMessage);
         // Gửi email xác nhận
         ExecutorService emailExecutor = Executors.newSingleThreadExecutor();
         emailExecutor.execute(() -> {
@@ -184,6 +196,10 @@ private final OrderStatusService orderStatusService;
         });
 
         return orderMapper.toOrderResponse(resp);
+    }
+    public Order findByTxnRef(String txnRef) {
+        return orderRepository.findByVnpTxnRef(txnRef)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với mã giao dịch"));
     }
 
 }

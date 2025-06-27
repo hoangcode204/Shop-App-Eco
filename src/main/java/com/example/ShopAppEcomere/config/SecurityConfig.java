@@ -38,7 +38,8 @@ public class SecurityConfig {
             "/api/v1/orders/postdetails",
             "/api/v1/users/register",
             "/api/v1/users/request-password-reset",
-            "/api/v1/users/reset-password"
+            "/api/v1/users/reset-password",
+            "/api/v1/auth/refresh",
 
     };
 
@@ -51,7 +52,9 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/swagger-resources/**",
-            "/webjars/**"
+            "/webjars/**",
+            "/api/v1/orders/statistical/topproduct",
+            "/ws/**"
     };
     private final String[] PUBLIC_ENDPOINTS_PUT = {
 
@@ -69,10 +72,12 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request ->
-                        request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS_POST).permitAll()
+                                request.requestMatchers(HttpMethod.GET, "/api/v1/stripe/vnpay-return").permitAll()
+                       .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS_POST).permitAll()
                                 .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINTS_GET).permitAll()
                                 .requestMatchers(HttpMethod.PUT, PUBLIC_ENDPOINTS_PUT).permitAll()
                                 .requestMatchers(HttpMethod.DELETE, PUBLIC_ENDPOINTS_DELETE).permitAll()
+                                        .requestMatchers("/ws/**").permitAll()
                                 .requestMatchers(SWAGGER_WHITELIST).permitAll() // 👈 thêm dòng này
                                 //phân quyền trên config/hoặc trên method
 //                        .requestMatchers(HttpMethod.GET,"/users").hasRole(Account.Role.ADMIN.name())

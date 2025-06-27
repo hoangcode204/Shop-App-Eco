@@ -15,6 +15,7 @@ import java.util.Map;
 public class CloudinaryImageService {
     private final Cloudinary cloudinary;
 
+
     // **1. Upload ảnh lên Cloudinary và trả về URL**
     public String upload(MultipartFile file) {
         try {

@@ -19,6 +19,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
@@ -101,13 +102,13 @@ private void sendRegistrationEmail(String email, String username) {
 
     @PutMapping("/{userId}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_USER')")
-    ApiResponse<UserResponse> updateUser(@PathVariable Integer userId, @RequestPart("user")  UserRequest request, @RequestPart("image") MultipartFile file){
+    ApiResponse<UserResponse> updateUser(@PathVariable Integer userId, @RequestBody UserRequest request){
         return ApiResponse.<UserResponse>builder()
-                .result(userService.update(userId, request,file))
+                .result(userService.update(userId,request))
                 .build();
     }
     @PostMapping("/request-password-reset")
-    ApiResponse<String> requestPasswordReset(@RequestBody String email) throws MessagingException {
+    ApiResponse<String> requestPasswordReset(@RequestParam String email) throws MessagingException {
         userService.handlePasswordResetRequest(email);
         return ApiResponse.<String>builder()
                 .result("Yêu cầu đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra email của bạn.")
@@ -119,6 +120,13 @@ private void sendRegistrationEmail(String email, String username) {
         userService.resetPassword(token, newPassword);
         return ApiResponse.<String>builder()
                 .result("Mật khẩu đã được đặt lại thành công.")
+                .build();
+    }
+    @GetMapping("")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    ApiResponse<List<UserResponse>> getAllUsers() {
+        return ApiResponse.<List<UserResponse>>builder()
+                .result(userService.getAll())
                 .build();
     }
 }

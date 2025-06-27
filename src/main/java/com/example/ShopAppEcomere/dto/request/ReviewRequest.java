@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ReviewRequest {
     private String comment;
+    private Integer rating; // ⭐ Thêm dòng này
     private LocalDateTime created_at;
     private Integer user_id;
     private Integer product_id;

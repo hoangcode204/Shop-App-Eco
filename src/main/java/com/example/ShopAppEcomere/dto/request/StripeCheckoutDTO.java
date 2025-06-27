@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class StripeCheckoutDTO extends OrderDTO {
     private String successUrl;
-    private String errorUrl;
+//    private String errorUrl;
+
 }
 

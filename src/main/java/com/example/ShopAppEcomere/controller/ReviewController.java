@@ -26,7 +26,7 @@ public class ReviewController {
     }
     @PostMapping
     @ApiMessage("Post a new review ")
-    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @PreAuthorize("hasAuthority('ROLE_USER') or hasAuthority('ROLE_ADMIN')")
     public ApiResponse<ReviewResponse> postReview(@RequestBody ReviewRequest reviewRequest) {
         return ApiResponse.<ReviewResponse>builder()
                 .result(reviewService.create(reviewRequest))
@@ -37,6 +37,12 @@ public class ReviewController {
     public ApiResponse<List<ReviewResponse>> getReviewById(@PathVariable("productId") Integer productId) {
         return ApiResponse.<List<ReviewResponse>>builder()
                 .result(reviewService.getReviewsByProductId(productId))
+                .build();
+    }
+    @GetMapping("/user/{userId}/product-ids")
+    public ApiResponse<List<Integer>> getReviewedProductIdsByUserId(@PathVariable("userId") Integer userId) {
+        return ApiResponse.<List<Integer>>builder()
+                .result(reviewService.getReviewedProductIdsByUserId(userId))
                 .build();
     }
 

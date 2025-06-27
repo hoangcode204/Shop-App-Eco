@@ -20,7 +20,7 @@ public class Review  {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
+    private Integer rating; // ⭐ Thêm dòng này
     private String comment;
     private LocalDateTime created_at;
     @ManyToOne(cascade = CascadeType.MERGE)

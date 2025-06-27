@@ -5,10 +5,12 @@ import com.example.ShopAppEcomere.dto.request.ProductRequest;
 import com.example.ShopAppEcomere.dto.response.product.ProductResponse;
 import com.example.ShopAppEcomere.entity.Category;
 import com.example.ShopAppEcomere.entity.Product;
+import com.example.ShopAppEcomere.enums.StatusOrder;
 import com.example.ShopAppEcomere.exception.AppException;
 import com.example.ShopAppEcomere.exception.ErrorCode;
 import com.example.ShopAppEcomere.mapper.ProductMapper;
 import com.example.ShopAppEcomere.repository.CategoryRepository;
+import com.example.ShopAppEcomere.repository.OrderItemRepository;
 import com.example.ShopAppEcomere.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,6 +35,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final CloudinaryImageService cloudinaryImageService;
+    private final OrderItemRepository orderItemRepository;
     public Page<ProductResponse> getAllProduct(HashMap<String, String> multipleParam){
         Integer page;
         Integer size;
@@ -62,7 +65,10 @@ public class ProductService {
         if(product==null){
             throw new AppException(ErrorCode.PRODUCT_NOT_EXISTED);
         }
-        return productMapper.toProductResponse(product);
+        ProductResponse response = productMapper.toProductResponse(product);
+        Long soldQuantity = orderItemRepository.sumQuantityByProductIdAndOrderStatus(product.getId(), StatusOrder.DA_GIAO);
+        response.setTotalSold(soldQuantity != null ? soldQuantity : 0L);
+        return response;
     }
 
     public List<ProductResponse> findProductByPriceBetween(Integer priceMin, Integer priceMax) {
@@ -75,7 +81,7 @@ public class ProductService {
         return products.stream().map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
-    public ProductResponse create(ProductRequest productRequest) {
+    public ProductResponse create(ProductRequest productRequest, MultipartFile file) {
 
         // Tìm category từ ID
         Category category = categoryRepository.findById(productRequest.getCategory_id())
@@ -83,6 +89,12 @@ public class ProductService {
         // Chuyển từ request → entity
         Product newProduct = productMapper.toProduct(productRequest);
         newProduct.setCategory(category);
+
+        // Upload ảnh nếu có file
+        if (file != null && !file.isEmpty()) {
+            String imageUrl = cloudinaryImageService.upload(file);
+            newProduct.setImg(imageUrl);
+        }
 
         // Chuyển từ entity → response
         return productMapper.toProductResponse(productRepository.save(newProduct));
@@ -96,7 +108,14 @@ public class ProductService {
         if (product == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_EXISTED);
         }
-        product=productMapper.toProduct(productRequest);
+        // Cập nhật từng trường thay vì tạo object mới
+        product.setName_product(productRequest.getName_product());
+        product.setDescription(productRequest.getDescription());
+        product.setDescriptionShort(productRequest.getDescriptionShort());
+        product.setPrice(productRequest.getPrice());
+        product.setQuantity(productRequest.getQuantity());
+        product.setBrand(productRequest.getBrand());
+        product.setPromotionalPrice(productRequest.getPromotionalPrice());
         product.setCategory(categoryRepository.findById(productRequest.getCategory_id())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND)));
         // Cập nhật ảnh nếu có file
@@ -123,14 +142,18 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-public Page<ProductResponse> getFilteredProducts(int page, int limit, String sortBy, String name, String category, Float priceMax, Float priceMin, String order) {
-    Sort.Direction direction = order.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
-    PageRequest pageRequest = PageRequest.of(page - 1, limit, Sort.by(direction, sortBy));
 
-    // Cách 1: Sử dụng `@Query` trong repository
-    Page<Product> productPage = productRepository.findFilteredProducts(name, category, priceMin, priceMax, pageRequest);
-    return productPage.map(productMapper::toProductResponse);
-}
+    public Page<ProductResponse> getFilteredProducts(int page, int limit, String sortBy, String name, String category, String brand, Float priceMax, Float priceMin, String order) {
+        PageRequest pageRequest = createPageRequest(page, limit, sortBy, order);
+        Page<Product> productPage = productRepository.findFilteredProducts(name, category, brand, priceMin, priceMax, pageRequest);
+        return productPage.map(product -> {
+            ProductResponse response = productMapper.toProductResponse(product);
+            Long soldQuantity = orderItemRepository.sumQuantityByProductIdAndOrderStatus(product.getId(), StatusOrder.DA_GIAO);
+            response.setTotalSold(soldQuantity != null ? soldQuantity : 0L);
+            return response;
+        });
+    }
+
 
 
     private PageRequest createPageRequest(int page, int limit, String sortBy, String order) {
@@ -141,16 +164,16 @@ public Page<ProductResponse> getFilteredProducts(int page, int limit, String sor
                 sort = Sort.by(sortDirection, "price");
                 break;
             case "createdAt":
-                sort = Sort.by(sortDirection, "created_at");
+                sort = Sort.by(sortDirection, "createdAt");
                 break;
             case "view":
                 sort = Sort.by(sortDirection, "id");
                 break;
             case "sold":
-                sort = Sort.by(sortDirection, "quantity");
+                sort = Sort.by(sortDirection, "totalSold"); // Sửa ở đây
                 break;
             default:
-                sort = Sort.by(sortDirection, "created_at");
+                sort = Sort.by(sortDirection, "createdAt");
         }
 
         return PageRequest.of(page - 1, limit, sort);

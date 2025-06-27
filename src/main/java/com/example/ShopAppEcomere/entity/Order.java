@@ -34,6 +34,8 @@ public class Order extends Base {
     private String wards;
 
     private String specific_address;
+    private String vnpTxnRef;
+    private Boolean isPaid = false;
     //
     @ManyToOne(cascade = CascadeType.MERGE)
     @JoinColumn(name = "status_id", referencedColumnName = "id")

@@ -1,5 +1,7 @@
 package com.example.ShopAppEcomere.dto.response.review;
 
+import com.example.ShopAppEcomere.dto.response.UserResponse;
+import com.example.ShopAppEcomere.entity.User;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -11,9 +13,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ReviewResponse {
     private Integer id;
-
+    private Integer rating; // ⭐ Thêm dòng này
     private String comment;
     private LocalDateTime created_at;
-    private Integer user_id;
+    private UserResponse user;
     private Integer product_id;
 }

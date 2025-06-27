@@ -5,6 +5,7 @@ import com.example.ShopAppEcomere.dto.response.ApiResponse;
 import com.example.ShopAppEcomere.dto.response.product.ProductResponse;
 import com.example.ShopAppEcomere.entity.Product;
 import com.example.ShopAppEcomere.service.ProductService;
+import com.example.ShopAppEcomere.service.CloudinaryImageService;
 import com.example.ShopAppEcomere.validator.ApiMessage;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,19 +15,26 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
+    private final CloudinaryImageService cloudinaryImageService;
+
     @PostMapping("/products")
     @ApiMessage("Create a new product")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ApiResponse<ProductResponse> postSave(@RequestBody ProductRequest request){
+    public ApiResponse<ProductResponse> postSave(@RequestPart("product") ProductRequest request,
+                                                 @RequestPart(value = "file", required = false) MultipartFile file){
         return ApiResponse.<ProductResponse>builder()
-                .result(productService.create(request))
+                .result(productService.create(request, file))
                 .build();
     }
+
     @GetMapping("/products/{productId}")
     @ApiMessage("Fetch product by id")
     public ApiResponse<ProductResponse> getProductById(@PathVariable("productId") Integer productId) {
@@ -34,7 +42,6 @@ public class ProductController {
                 .result(productService.getProductById(productId))
                 .build();
     }
-
 
     @PutMapping("/products/{productId}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
@@ -53,21 +60,22 @@ public class ProductController {
                 .message("Delete product successful")
                 .build();
     }
-@GetMapping("/products")
-public ApiResponse<Page<ProductResponse>> getProducts(
-        @RequestParam(name = "page", defaultValue = "1") int page,
-        @RequestParam(name = "limit", defaultValue = "20") int limit,
-        @RequestParam(name = "sort_by", defaultValue = "createdAt") String sortBy,
-        @RequestParam(name = "order", defaultValue = "desc") String order,
-        @RequestParam(name = "name", required = false) String name,
-        @RequestParam(name = "category", required = false) String category,
-        @RequestParam(name = "price_max", required = false) Float priceMax,
-        @RequestParam(name = "price_min", required = false) Float priceMin) {
+    @GetMapping("/products")
+    public ApiResponse<Page<ProductResponse>> getProducts(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "limit", defaultValue = "20") int limit,
+            @RequestParam(name = "sort_by", defaultValue = "createdAt") String sortBy,
+            @RequestParam(name = "order", defaultValue = "desc") String order,
+            @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "brand", required = false) String brand,
+            @RequestParam(name = "price_max", required = false) Float priceMax,
+            @RequestParam(name = "price_min", required = false) Float priceMin) {
 
-    Page<ProductResponse> products = productService.getFilteredProducts(page, limit, sortBy, name, category, priceMax, priceMin, order);
+        Page<ProductResponse> products = productService.getFilteredProducts(page, limit, sortBy, name, category, brand, priceMax, priceMin, order);
 
-    return ApiResponse.<Page<ProductResponse>>builder()
-            .result(products)
-            .build();
-}
+        return ApiResponse.<Page<ProductResponse>>builder()
+                .result(products)
+                .build();
+    }
 }

@@ -38,7 +38,9 @@ public enum ErrorCode {
     GALLERY_NOT_EXISTED(1018,"Gallery not existed",HttpStatus.NOT_FOUND),
     INVALID_RESET_TOKEN(1019,"Invalid reset token",HttpStatus.BAD_REQUEST),
     RESET_TOKEN_EXPIRED(1020,"Reset token expired",HttpStatus.BAD_REQUEST),
-
+    REVIEW_NOT_EXISTED(1021,"Review not existed",HttpStatus.NOT_FOUND),
+    NOTIFICATION_NOT_FOUND(1022,"Notification not found",HttpStatus.NOT_FOUND),
+    QUESTION_NOT_FOUND(1023, "Question not found", HttpStatus.NOT_FOUND),
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
