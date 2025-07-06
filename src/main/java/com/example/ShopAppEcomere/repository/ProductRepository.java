@@ -50,4 +50,19 @@ public interface ProductRepository extends JpaRepository<Product,Integer>, JpaSp
             Pageable pageable
     );
 
+    @Query("SELECT p FROM Product p WHERE " +
+            "(:name IS NULL OR p.name_product LIKE %:name%) AND " +
+            "(:category IS NULL OR p.category.name = :category) AND " +
+            "(:brand IS NULL OR p.brand = :brand) AND " +
+            "(:priceMin IS NULL OR p.price >= :priceMin) AND " +
+            "(:priceMax IS NULL OR p.price <= :priceMax) AND " +
+            "p.deletedAt IS NULL")
+    List<Product> findFilteredProductsNoPage(
+            @Param("name") String name,
+            @Param("category") String category,
+            @Param("brand") String brand,
+            @Param("priceMin") Float priceMin,
+            @Param("priceMax") Float priceMax
+    );
+
 }

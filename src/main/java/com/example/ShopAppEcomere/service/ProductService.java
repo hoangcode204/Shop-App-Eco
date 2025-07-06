@@ -144,14 +144,38 @@ public class ProductService {
 
 
     public Page<ProductResponse> getFilteredProducts(int page, int limit, String sortBy, String name, String category, String brand, Float priceMax, Float priceMin, String order) {
-        PageRequest pageRequest = createPageRequest(page, limit, sortBy, order);
-        Page<Product> productPage = productRepository.findFilteredProducts(name, category, brand, priceMin, priceMax, pageRequest);
-        return productPage.map(product -> {
-            ProductResponse response = productMapper.toProductResponse(product);
-            Long soldQuantity = orderItemRepository.sumQuantityByProductIdAndOrderStatus(product.getId(), StatusOrder.DA_GIAO);
-            response.setTotalSold(soldQuantity != null ? soldQuantity : 0L);
-            return response;
-        });
+        if ("sold".equals(sortBy)) {
+            // Lấy toàn bộ sản phẩm phù hợp filter (không phân trang)
+            List<Product> products = productRepository.findFilteredProductsNoPage(name, category, brand, priceMin, priceMax);
+            List<ProductResponse> productResponses = products.stream().map(product -> {
+                ProductResponse response = productMapper.toProductResponse(product);
+                Long soldQuantity = orderItemRepository.sumQuantityByProductIdAndOrderStatus(product.getId(), StatusOrder.DA_GIAO);
+                response.setTotalSold(soldQuantity != null ? soldQuantity : 0L);
+                return response;
+            }).collect(Collectors.toList());
+            // Sort theo sold
+            if ("asc".equalsIgnoreCase(order)) {
+                productResponses.sort(java.util.Comparator.comparing(ProductResponse::getTotalSold));
+            } else {
+                productResponses.sort(java.util.Comparator.comparing(ProductResponse::getTotalSold).reversed());
+            }
+            // Phân trang lại ở Java
+            Pageable pageable = PageRequest.of(page - 1, limit);
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), productResponses.size());
+            List<ProductResponse> pageContent = (start <= end) ? productResponses.subList(start, end) : java.util.Collections.emptyList();
+            return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, productResponses.size());
+        } else {
+            // Logic cũ cho các sort khác
+            PageRequest pageRequest = createPageRequest(page, limit, sortBy, order);
+            Page<Product> productPage = productRepository.findFilteredProducts(name, category, brand, priceMin, priceMax, pageRequest);
+            return productPage.map(product -> {
+                ProductResponse response = productMapper.toProductResponse(product);
+                Long soldQuantity = orderItemRepository.sumQuantityByProductIdAndOrderStatus(product.getId(), StatusOrder.DA_GIAO);
+                response.setTotalSold(soldQuantity != null ? soldQuantity : 0L);
+                return response;
+            });
+        }
     }
 
 
