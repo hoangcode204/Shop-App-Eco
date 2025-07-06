@@ -9,7 +9,6 @@ Một nền tảng thương mại điện tử hoàn chỉnh được xây dựn
 - [Công nghệ sử dụng](#công-nghệ-sử-dụng)
 - [Chức năng chính](#chức-năng-chính)
 - [Cài đặt và chạy](#cài-đặt-và-chạy)
-- [API Documentation](#api-documentation)
 - [Đóng góp](#đóng-góp)
 
 ## 🎯 Tổng quan
