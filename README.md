@@ -1,5 +1,5 @@
 # 🛒 Shop E-Commerce Platform
-
+Video dự án: https://drive.google.com/file/d/1pQMrpriLKPpha52gu_A05uPpNXFTc9bG/view?usp=sharing
 Một nền tảng thương mại điện tử hoàn chỉnh được xây dựng với kiến trúc microservices, hỗ trợ đầy đủ các chức năng cho cả người dùng và quản trị viên.
 
 ## 📋 Mục lục
